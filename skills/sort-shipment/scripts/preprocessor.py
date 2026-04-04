@@ -1,11 +1,36 @@
 """
 Preprocessor — cleans a vendor shipment Excel file before LLM extraction.
 
+The input Excel workbook contains two worksheets produced by upstream factories:
+  1. "AS" — pending/in-progress shipments
+  2. "Shipped" — completed shipments with container and arrival info
+
+This script strips noise columns (photos, WIP status, internal dates) and
+normalises merged cells so the downstream LLM agent receives a flat,
+machine-readable table.
+
+Processing steps per worksheet:
+
 AS worksheet:
-  - Remove: Photo, WIP (cutting/stitching/last), ETD ShenZhen, AS XF, Update AS XF
+  1. Unmerge all header-row cells and forward-fill values.
+  2. Identify and delete columns:
+     Photo, WIP (cutting/stitching/last), ETD ShenZhen, AS XF, Update AS XF.
+
 Shipped worksheet:
-  - Unmerge & fill: Container Type, ETD-ShenZhen, ETA-SA, Remark
-  - Remove: Photo, WIP (stitching/last/pack), Factory, Order Received Date, AS XF
+  1. Unhide any hidden columns so all data is visible.
+  2. Unmerge all header-row cells and forward-fill values.
+  3. Unmerge and forward-fill data cells in grouped columns:
+     LH XF, Container Type, ETD-ShenZhen, ETA-SA, Remark.
+  4. Filter rows by date: keep only rows whose "LH XF" (factory ex-factory
+     date) falls on or after January 1 of the current year. Older shipments
+     are removed to limit the dataset to the active shipping window.
+  5. Identify and delete columns:
+     Photo, WIP (stitching/last/pack), Factory, Order Received Date, AS XF.
+
+Output:
+  The cleaned workbook is saved to data/bronze/ by default, named
+  preprocessed_<YYYY-MM-DD>.xlsx. An explicit output path can be provided
+  as a second CLI argument.
 
 Usage:
   uv run python -m skills.sort-shipment.scripts.preprocessor <input.xlsx> [output.xlsx]
@@ -14,7 +39,7 @@ Usage:
 
 from __future__ import annotations
 
-from datetime import date
+from datetime import date, datetime
 from pathlib import Path
 from typing import TYPE_CHECKING
 
@@ -106,7 +131,7 @@ class ASSheetCleaner(SheetCleaner):
 class ShippedSheetCleaner(SheetCleaner):
     """Cleaner for the Shipped (completed shipments) worksheet."""
 
-    FILL_HEADERS = ["container type", "etd-shenzhen", "eta-sa", "remark"]
+    FILL_HEADERS = ["lh xf", "container type", "etd-shenzhen", "eta-sa", "remark"]
     REMOVE_HEADERS = [
         "photo", "stitching", "last", "pack",
         "factory", "order received date", "as xf",
@@ -117,11 +142,31 @@ class ShippedSheetCleaner(SheetCleaner):
             if dim.hidden:
                 dim.hidden = False
 
+    def filter_rows_by_lh_xf_date(self) -> None:
+        """Remove data rows where LH XF date is before January 1 of the current year."""
+        lh_xf_cols = self.find_columns_by_header(["lh xf"])
+        if not lh_xf_cols:
+            return
+        col_idx = lh_xf_cols[0]
+        year_start = date(date.today().year, 1, 1)
+        rows_to_delete: list[int] = []
+        for row_idx in range(self.HEADER_ROWS + 1, self.ws.max_row + 1):
+            val = self.ws.cell(row_idx, col_idx).value
+            if val is None:
+                continue
+            if isinstance(val, datetime):
+                val = val.date()
+            if isinstance(val, date) and val < year_start:
+                rows_to_delete.append(row_idx)
+        for row_idx in reversed(rows_to_delete):
+            self.ws.delete_rows(row_idx)
+
     def clean(self) -> None:
         self.unhide_columns()
         self.unmerge_header_rows()
         fill_cols = self.find_columns_by_header(self.FILL_HEADERS)
         self.unmerge_and_fill(fill_cols)
+        self.filter_rows_by_lh_xf_date()
         cols_to_remove = self.find_columns_by_header(self.REMOVE_HEADERS)
         self.delete_columns(cols_to_remove)
 
