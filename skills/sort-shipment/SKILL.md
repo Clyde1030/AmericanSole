@@ -1,6 +1,6 @@
 ---
 name: sort-shipment
-description: Extract and normalize structured shipment records from messy vendor Excel exports
+description: Extract and normalize structured shipment records from preprocessed vendor Excel data
 ---
 
 ## ROLE
@@ -15,18 +15,25 @@ Only perform extraction and normalization.
 ---
 
 ## INPUT
-You will receive a raw text dump of an Excel workbook.
+You will receive a preprocessed Excel workbook from `data/bronze/preprocessed_YYYY-MM-DD.xlsx` (using today's date).
 
-Characteristics of the data:
-- Hidden columns may already be expanded
+The preprocessor has already:
+- Unhidden all columns
+- Unmerged cells and propagated values
+- Removed irrelevant columns (Photo, WIP, AS XF, Update AS XF, etc.)
+
+Remaining characteristics of the data:
 - Cells may contain:
-  - merged values across rows
   - multi-line text
   - mixed languages (English / Chinese)
   - inconsistent date formats
+- PO numbers are always strings — never cast them to integers or floats
 - Two worksheets:
   - "AS": pending shipments
   - "Shipped": completed shipments (may use inconsistent naming)
+
+**IMPORTANT:** Process BOTH worksheets. Extract shipment records from AS and
+Shipped, then concatenate all rows into a single result written to `data_dest`.
 
 ---
 
@@ -34,9 +41,9 @@ Characteristics of the data:
 
 Output must be written to an Excel file:
 
-1. Copy `skills/sort-shipment/references/gantt_template.xlsx` to `output/gantt_YYYY-MM-DD.xlsx` (using today's date)
-2. Open the copy and write the curated data to the **"setting"** worksheet, starting at the named range **`data_dest`**
-3. **Do NOT modify, delete, or hide any other worksheet** — only write to "setting"
+1. Copy `skills/sort-shipment/references/gantt_template.xlsx` to `data/silver/gantt_YYYY-MM-DD.xlsx` (using today's date)
+2. Open the copy and write the curated data to the **"data"** worksheet, starting at the named range **`data_dest`**
+3. **Do NOT modify, delete, or hide any other worksheet** — only write to "data"
 4. Save and close the file
 
 Data rules:
@@ -55,14 +62,7 @@ po_number,shipment_idx,brand,style,pairs,lh_xf,etd_port,eta_sa,eta_fac,customer_
 
 ## NORMALIZATION PIPELINE
 
-### Step 1 — Identify Logical Rows
-- Expand merged cells:
-  - Propagate values top-down across all affected rows
-- Align each row into a complete record
-
----
-
-### Step 2 — Detect Shipment Splits
+### Step 1 — Detect Shipment Splits
 A PO may represent multiple shipments.
 
 #### Case A — Multi-line XF with matching total
@@ -88,7 +88,7 @@ Rule:
 
 ---
 
-### Step 3 — Date Normalization
+### Step 2 — Date Normalization
 Convert all dates to:
 YYYY-MM-DD
 
@@ -104,34 +104,23 @@ Heuristics:
 
 ---
 
-### Step 4 — Field Cleaning
-
-Ignore fields entirely:
-- Photo
-- WIP
-- AS XF
-- Update AS XF
-
-Extract:
-- container_number if present anywhere in text
-- remarks even if misplaced in other columns
-
----
-
-### Step 5 — Derived Fields
+### Step 3 — Derived Fields
 
 #### eta_sa
-- If present → use it
-- If missing:
-  - Cambodia shipment → lh_xf + 55 days
-  - otherwise → lh_xf + 35 days
+- If present and is an actual date → use it
+- If the cell contains a formula (e.g., a value plus 35 or plus 55) or is missing,
+  compute it from scratch:
+  - Determine the shipment's origin location. Check the **Remark** column for
+    country/factory clues (e.g., "Cambodia", "柬埔寨").
+  - Cambodia shipments → lh_xf + 55 days
+  - All other origins → lh_xf + 35 days
 
 #### eta_fac
 - eta_sa + 3 days
 
 ---
 
-### Step 6 — Container Logic
+### Step 4 — Container Logic
 - If container_type is merged across rows:
   - assign same value to all related shipments
 - Same rule applies to ETA fields tied to container
@@ -143,7 +132,8 @@ Extract:
 - Never invent data
 - Only infer when logically certain
 - If uncertain → return null
-- Maintain row order as in source
+- PO numbers must always be written as strings (text), never as numbers
+- Maintain row order as in source — AS rows first, then Shipped rows
 - shipment_idx must restart per PO
 - Output must be deterministic
 
@@ -151,10 +141,15 @@ Extract:
 
 ## EDGE CASE HANDLING
 
+- Multi-line text in cells → parse each line separately for shipment splits and dates
 - Mixed-language cells → extract only meaningful structured data
-- Misaligned columns → infer based on semantic meaning, not position
 - Extra text in cells → extract relevant values, discard noise
 - Duplicate PO rows → treat independently unless clearly merged
+- **customer_requested_xf** — this field may not have its own column. When it
+  is absent, check the **Remark** column for date-like references that indicate
+  a customer-requested ex-factory date (e.g., "客人要求4/15出", "cust req XF 4/15",
+  or similar patterns). Parse and normalize these dates. If no such information
+  exists, return null.
 
 ---
 
