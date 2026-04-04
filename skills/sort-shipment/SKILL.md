@@ -41,7 +41,7 @@ Shipped, then concatenate all rows into a single result written to `data_dest`.
 
 Output must be written to an Excel file:
 
-1. Copy `skills/sort-shipment/references/gantt_template.xlsx` to `data/silver/gantt_YYYY-MM-DD.xlsx` (using today's date)
+1. Copy `skills/sort-shipment/references/gantt_template.xlsm` to `data/silver/gantt_YYYY-MM-DD.xlsm` (using today's date)
 2. Open the copy and write the curated data to the **"data"** worksheet, starting at the named range **`data_dest`**
 3. **Do NOT modify, delete, or hide any other worksheet** — only write to "data"
 4. Save and close the file
