@@ -9,7 +9,7 @@ Shipped worksheet:
 
 Usage:
   uv run python -m skills.sort-shipment.scripts.preprocessor <input.xlsx> [output.xlsx]
-  uv run python -m skills.sort-shipment.scripts.preprocessor "skills/sort-shipment/references/AS_report_input.xlsx" "output/AS_report_output.xlsx"
+  uv run python -m skills.sort-shipment.scripts.preprocessor "data/raw/AS_report_input.xlsx"
 """
 
 from datetime import date
@@ -118,7 +118,7 @@ def preprocess(input_path: str | Path, output_path: str | Path | None = None) ->
 
     Args:
         input_path: Path to the raw .xlsx file.
-        output_path: Where to save. Defaults to output/preprocessed_YYYY-MM-DD.xlsx.
+        output_path: Where to save. Defaults to data/bronze/preprocessed_YYYY-MM-DD.xlsx.
 
     Returns:
         Path to the saved preprocessed file.
@@ -128,8 +128,8 @@ def preprocess(input_path: str | Path, output_path: str | Path | None = None) ->
         raise FileNotFoundError(f"Input file not found: {input_path}")
 
     if output_path is None:
-        out_dir = Path("output")
-        out_dir.mkdir(exist_ok=True)
+        out_dir = Path("data/bronze")
+        out_dir.mkdir(parents=True, exist_ok=True)
         output_path = out_dir / f"preprocessed_{date.today().isoformat()}.xlsx"
     else:
         output_path = Path(output_path)
