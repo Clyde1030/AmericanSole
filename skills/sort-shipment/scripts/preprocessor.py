@@ -11,9 +11,16 @@ machine-readable table.
 
 Processing steps per worksheet:
 
+Both worksheets:
+  - PO numbers are coerced to text strings. Excel may store them as numbers
+    (e.g., 12345.0); this step converts them to clean strings ("12345") and
+    sets the cell data type to "s" (string) so downstream consumers never
+    misinterpret them as numeric values.
+
 AS worksheet:
   1. Unmerge all header-row cells and forward-fill values.
-  2. Identify and delete columns:
+  2. Coerce PO numbers to strings.
+  3. Identify and delete columns:
      Photo, WIP (cutting/stitching/last), ETD ShenZhen, AS XF, Update AS XF.
 
 Shipped worksheet:
@@ -21,10 +28,11 @@ Shipped worksheet:
   2. Unmerge all header-row cells and forward-fill values.
   3. Unmerge and forward-fill data cells in grouped columns:
      LH XF, Container Type, ETD-ShenZhen, ETA-SA, Remark.
-  4. Filter rows by date: keep only rows whose "LH XF" (factory ex-factory
+  4. Coerce PO numbers to strings.
+  5. Filter rows by date: keep only rows whose "LH XF" (factory ex-factory
      date) falls on or after January 1 of the current year. Older shipments
      are removed to limit the dataset to the active shipping window.
-  5. Identify and delete columns:
+  6. Identify and delete columns:
      Photo, WIP (stitching/last/pack), Factory, Order Received Date, AS XF.
 
 Output:
@@ -109,6 +117,18 @@ class SheetCleaner:
         for col_idx in sorted(col_indices, reverse=True):
             self.ws.delete_cols(col_idx)
 
+    def coerce_po_to_string(self) -> None:
+        """Convert PO number cells from numeric to string so they are preserved as text."""
+        po_cols = self.find_columns_by_header(["po"])
+        if not po_cols:
+            return
+        for col_idx in po_cols:
+            for row_idx in range(self.HEADER_ROWS + 1, self.ws.max_row + 1):
+                cell = self.ws.cell(row_idx, col_idx)
+                if cell.value is not None and not isinstance(cell.value, str):
+                    cell.value = str(int(cell.value)) if isinstance(cell.value, float) and cell.value == int(cell.value) else str(cell.value)
+                    cell.data_type = "s"
+
     def clean(self) -> None:
         """Override in subclasses to define sheet-specific cleaning steps."""
         raise NotImplementedError
@@ -124,6 +144,7 @@ class ASSheetCleaner(SheetCleaner):
 
     def clean(self) -> None:
         self.unmerge_header_rows()
+        self.coerce_po_to_string()
         cols_to_remove = self.find_columns_by_header(self.REMOVE_HEADERS)
         self.delete_columns(cols_to_remove)
 
@@ -166,6 +187,7 @@ class ShippedSheetCleaner(SheetCleaner):
         self.unmerge_header_rows()
         fill_cols = self.find_columns_by_header(self.FILL_HEADERS)
         self.unmerge_and_fill(fill_cols)
+        self.coerce_po_to_string()
         self.filter_rows_by_lh_xf_date()
         cols_to_remove = self.find_columns_by_header(self.REMOVE_HEADERS)
         self.delete_columns(cols_to_remove)
