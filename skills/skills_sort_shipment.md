@@ -36,7 +36,7 @@ If a single row contains multi-line values in the quantity (`PAIR`) or date (`LH
 - Identify merged cell ranges (rows sharing a single value).
 - Apply a top-down distribution: Every row within the merged range inherits the merged value (e.g., if one Container ID is merged across three PO rows, all three POs belong to that Container ID).
 
-<img src="MergeCellExample.png" width="600">
+<img src="MergeCellExample.png" width="900">
 
 ### C. Translation & Cleanup
 - Language: Translate Chinese logistics terms to English.
