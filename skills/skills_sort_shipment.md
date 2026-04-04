@@ -31,9 +31,13 @@ You will receive a raw text dump from a vendor Excel file. You must process data
 If a single row contains multi-line values in the quantity (`PAIR`) or date (`LH XF`) columns, apply the **Sum-Check Rule**:
 - Case 1 (Completed Shipments): If a cell contains historical dates and a final remaining date (e.g., "3/26: 600 OK \n 4/1: 1314") and the last number matches the `PAIR` total, only extract the latest date as a single shipment.
 - Case 2 (Split Shipments): If the `PAIR` value is a total (e.g., 1938) and the date cell lists multiple quantities (e.g., "4/1: 660 \n 4/9: 1278"), create two separate entries (Shipment 1 and Shipment 2).
+
 ### B. Merged Cell Normalization
 - Identify merged cell ranges (rows sharing a single value).
 - Apply a top-down distribution: Every row within the merged range inherits the merged value (e.g., if one Container ID is merged across three PO rows, all three POs belong to that Container ID).
+
+<img src="MergeCellExample.png" width="600">
+
 ### C. Translation & Cleanup
 - Language: Translate Chinese logistics terms to English.
 - Inconsistency: Normalize "USBOOT" and "US BOOT" to "US BOOT".
