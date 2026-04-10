@@ -6,7 +6,7 @@ Reads preprocessed vendor Excel data and produces structured shipment
 records following the SKILL.md output schema.
 
 Usage:
-    uv run python -m skills.sort-shipment.scripts.pipeline <preprocessed.xlsx>
+    uv run python -m skills.sort-shipment.scripts.pipeline data/bronze/preprocessed_2026-04-04.xlsx
 """
 
 from __future__ import annotations
