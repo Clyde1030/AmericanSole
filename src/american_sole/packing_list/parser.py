@@ -5,7 +5,7 @@ Extracts item type (upper/outsole/sample), style numbers, and size-quantity
 breakdowns from packing list PDFs, then writes a structured CSV.
 
 Usage:
-    uv run python packing_list/parse_packing_list.py <pdf_path> [output_csv]
+    uv run python src/american_sole/packing_list/parser.py <pdf_path> [output_csv]
 """
 
 import csv
@@ -252,7 +252,7 @@ def _size_sort_key(size: str) -> float:
 
 def main() -> None:
     if len(sys.argv) < 2:
-        print("Usage: uv run python packing_list/parse_packing_list.py <pdf_path> [output_csv]")
+        print("Usage: uv run python src/american_sole/packing_list/parser.py <pdf_path> [output_csv]")
         sys.exit(1)
 
     pdf_path = sys.argv[1]

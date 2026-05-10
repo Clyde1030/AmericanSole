@@ -207,7 +207,7 @@ class DerivedFieldCalculator:
     _CAMBODIA_RE = re.compile(r"cambodia|柬埔寨|柬國", re.IGNORECASE)
     CAMBODIA_TRANSIT_DAYS = 55
     DEFAULT_TRANSIT_DAYS = 35
-    ETA_FAC_OFFSET_DAYS = 3
+    ETA_FAC_OFFSET_DAYS = 0
 
     def is_cambodia(self, remark: str | None) -> bool:
         if not remark:

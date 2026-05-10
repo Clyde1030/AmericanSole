@@ -16,3 +16,6 @@ data/
 # Generated output
 output/
 .DS_Store
+
+# Local databases (sqlite scratch)
+*.db

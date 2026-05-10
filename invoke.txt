@@ -1,2 +1,0 @@
-
-bash skills/sort-shipment/scripts/run.sh

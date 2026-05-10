@@ -5,7 +5,7 @@
 # Usage:
 #   ./skills/sort-shipment/scripts/run.sh [input.xlsx]
 #
-# Defaults to data/raw/AS_report_input.xlsx if no argument is provided.
+# Defaults to data/raw/reports/AS_report_input.xlsx if no argument is provided.
 
 set -euo pipefail
 
@@ -13,7 +13,7 @@ SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 PROJECT_DIR="$(cd "$SCRIPT_DIR/../../.." && pwd)"
 SKILL_FILE="$PROJECT_DIR/skills/sort-shipment/SKILL.md"
 
-INPUT="${1:-data/raw/AS_report_input.xlsx}"
+INPUT="${1:-data/raw/reports/AS_report_input.xlsx}"
 
 echo "=== Step 1: Preprocessing ==="
 uv run python -m skills.sort-shipment.scripts.preprocessor "$INPUT"

@@ -42,7 +42,7 @@ Output:
 
 Usage:
   uv run python -m skills.sort-shipment.scripts.preprocessor <input.xlsx> [output.xlsx]
-  uv run python -m skills.sort-shipment.scripts.preprocessor "data/raw/AS_report_input.xlsx"
+  uv run python -m skills.sort-shipment.scripts.preprocessor "data/raw/reports/AS_report_input.xlsx"
 """
 
 from __future__ import annotations
